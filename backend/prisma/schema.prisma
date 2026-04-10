@@ -1,0 +1,280 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ========================
+// ENUMS
+// ========================
+
+enum Role {
+  ADMIN
+  IT_AGENT
+  EMPLOYEE
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  ON_HOLD
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TicketCategory {
+  HARDWARE
+  SOFTWARE
+  NETWORK
+  EMAIL
+  PRINTER
+  ACCESS_PERMISSIONS
+  PHONE
+  OTHER
+}
+
+enum AssetType {
+  LAPTOP
+  DESKTOP
+  MONITOR
+  KEYBOARD
+  MOUSE
+  PRINTER
+  PHONE
+  TABLET
+  SERVER
+  SWITCH
+  ROUTER
+  UPS
+  HEADSET
+  WEBCAM
+  DOCKING_STATION
+  OTHER
+}
+
+enum AssetStatus {
+  ACTIVE
+  IN_REPAIR
+  RETIRED
+  AVAILABLE
+  RESERVED
+}
+
+// ========================
+// MODELOS PRINCIPALES
+// ========================
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  password     String
+  firstName    String
+  lastName     String
+  role         Role     @default(EMPLOYEE)
+  department   String?
+  position     String?
+  phone        String?
+  avatar       String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relaciones
+  ticketsCreated    Ticket[]       @relation("CreatedBy")
+  ticketsAssigned   Ticket[]       @relation("AssignedTo")
+  comments          Comment[]
+  assetsAssigned    AssetAssignment[]
+  notifications     Notification[]
+  activityLogs      ActivityLog[]
+
+  @@map("users")
+}
+
+model Ticket {
+  id           String         @id @default(cuid())
+  ticketNumber String         @unique
+  title        String
+  description  String         @db.Text
+  status       TicketStatus   @default(OPEN)
+  priority     TicketPriority @default(MEDIUM)
+  category     TicketCategory
+
+  // Quién creó y quién atiende
+  createdById  String
+  createdBy    User           @relation("CreatedBy", fields: [createdById], references: [id])
+  assignedToId String?
+  assignedTo   User?          @relation("AssignedTo", fields: [assignedToId], references: [id])
+
+  // Resolución
+  resolution   String?        @db.Text
+  resolvedAt   DateTime?
+  closedAt     DateTime?
+  firstResponseAt DateTime?
+
+  // Tiempos SLA
+  slaDeadline  DateTime?
+
+  // Activo relacionado (opcional)
+  assetId      String?
+  asset        Asset?         @relation(fields: [assetId], references: [id])
+
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  // Relaciones
+  comments     Comment[]
+  attachments  Attachment[]
+  history      TicketHistory[]
+  notifications Notification[]
+
+  @@map("tickets")
+}
+
+model Comment {
+  id         String   @id @default(cuid())
+  content    String   @db.Text
+  isInternal Boolean  @default(false)
+
+  ticketId   String
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User     @relation(fields: [authorId], references: [id])
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("comments")
+}
+
+model Attachment {
+  id           String   @id @default(cuid())
+  filename     String
+  originalName String
+  mimeType     String
+  size         Int
+  url          String
+
+  ticketId   String
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime @default(now())
+
+  @@map("attachments")
+}
+
+model TicketHistory {
+  id          String      @id @default(cuid())
+  ticketId    String
+  ticket      Ticket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  field       String
+  oldValue    String?
+  newValue    String?
+  changedById String
+  createdAt   DateTime    @default(now())
+
+  @@map("ticket_history")
+}
+
+// ========================
+// ACTIVOS IT
+// ========================
+
+model Asset {
+  id           String      @id @default(cuid())
+  assetTag     String      @unique
+  name         String
+  type         AssetType
+  brand        String?
+  model        String?
+  serialNumber String?     @unique
+  status       AssetStatus @default(AVAILABLE)
+
+  specifications Json?
+
+  purchaseDate   DateTime?
+  purchasePrice  Float?
+  warrantyExpiry DateTime?
+
+  notes    String?    @db.Text
+  location String?
+
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  // Relaciones
+  assignments  AssetAssignment[]
+  tickets      Ticket[]
+  maintenances AssetMaintenance[]
+
+  @@map("assets")
+}
+
+model AssetAssignment {
+  id         String    @id @default(cuid())
+  assetId    String
+  asset      Asset     @relation(fields: [assetId], references: [id])
+  userId     String
+  user       User      @relation(fields: [userId], references: [id])
+  assignedAt DateTime  @default(now())
+  returnedAt DateTime?
+  notes      String?
+
+  @@map("asset_assignments")
+}
+
+model AssetMaintenance {
+  id          String   @id @default(cuid())
+  assetId     String
+  asset       Asset    @relation(fields: [assetId], references: [id])
+  type        String
+  description String   @db.Text
+  cost        Float?
+  performedAt DateTime
+  nextDue     DateTime?
+  performedBy String?
+  createdAt   DateTime @default(now())
+
+  @@map("asset_maintenances")
+}
+
+// ========================
+// SISTEMA
+// ========================
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  ticketId  String?
+  ticket    Ticket?  @relation(fields: [ticketId], references: [id])
+  type      String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  String
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@map("activity_logs")
+}

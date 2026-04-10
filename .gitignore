@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+.env
+*.env.local
+.DS_Store
+*.log
+coverage/
+.nyc_output/
+postgres_data/
+redis_data/
+uploads/
+*.pem
+.next/

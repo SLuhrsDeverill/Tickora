@@ -1,0 +1,31 @@
+import { Outlet, useLocation } from 'react-router-dom';
+import Sidebar from './Sidebar';
+import Navbar from './Navbar';
+
+const pageTitles: Record<string, string> = {
+  '/dashboard': 'Dashboard',
+  '/tickets': 'Tickets',
+  '/tickets/new': 'Nuevo Ticket',
+  '/assets': 'Activos IT',
+  '/assets/new': 'Nuevo Activo',
+  '/users': 'Usuarios',
+  '/metrics': 'Métricas',
+  '/profile': 'Mi Perfil',
+};
+
+export default function Layout() {
+  const location = useLocation();
+  const title = pageTitles[location.pathname] || 'IT HelpDesk';
+
+  return (
+    <div className="flex h-screen bg-slate-50">
+      <Sidebar />
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <Navbar title={title} />
+        <main className="flex-1 overflow-auto p-6">
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  );
+}
