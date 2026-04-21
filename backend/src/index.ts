@@ -6,7 +6,7 @@ import { getRedis } from './config/redis';
 import { logger } from './utils/logger';
 import { initSocket } from './config/socket';
 
-const PORT = parseInt(process.env['PORT'] || '4000');
+const PORT = parseInt(process.env['PORT'] || '3000');
 
 async function bootstrap(): Promise<void> {
   await connectDatabase();
