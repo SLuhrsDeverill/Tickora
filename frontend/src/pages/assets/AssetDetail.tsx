@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Wrench, Ticket } from 'lucide-react';
+import { ArrowLeft, User, Ticket } from 'lucide-react';
 import { assetsApi } from '../../api/assets.api';
 import { usersApi } from '../../api/users.api';
-import { formatDate, formatDateShort } from '../../utils/formatDate';
+import { formatDateShort } from '../../utils/formatDate';
 import { ASSET_TYPE_LABELS, ASSET_STATUS_LABELS, ASSET_STATUS_COLORS } from '../../utils/constants';
 import type { Asset } from '../../types/asset.types';
 import type { User as UserType } from '../../types/user.types';

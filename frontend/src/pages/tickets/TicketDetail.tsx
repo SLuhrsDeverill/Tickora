@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, User, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Send, User, CheckCircle } from 'lucide-react';
 import { ticketsApi } from '../../api/tickets.api';
 import { usersApi } from '../../api/users.api';
 import TicketStatusBadge from '../../components/tickets/TicketStatusBadge';

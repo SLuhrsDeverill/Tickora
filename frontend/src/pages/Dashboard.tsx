@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
   LineChart, Line, XAxis, YAxis, CartesianGrid,
-  BarChart, Bar,
 } from 'recharts';
 import { Ticket, Clock, CheckCircle, TrendingUp, Monitor } from 'lucide-react';
 import { metricsApi } from '../api/metrics.api';
@@ -129,7 +128,7 @@ export default function Dashboard() {
                     cx="50%"
                     cy="50%"
                     outerRadius={80}
-                    label={({ label, percentage }) => `${label} (${percentage}%)`}
+                    label={(props) => { const p = props as unknown as { label: string; percentage: number }; return `${p.label} (${p.percentage}%)`; }}
                     labelLine={false}
                   >
                     {metrics.ticketsByCategory.map((_, index) => (

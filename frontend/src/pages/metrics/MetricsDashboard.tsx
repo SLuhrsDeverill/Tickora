@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
 import { metricsApi } from '../../api/metrics.api';
 import type {
@@ -11,8 +10,6 @@ import type {
   ResolutionTimeMetric,
 } from '../../types/metrics.types';
 import { CardSkeleton } from '../../components/ui/LoadingSkeleton';
-
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16', '#6b7280'];
 
 function getBarColor(hours: number) {
   if (hours <= 8) return '#10b981';

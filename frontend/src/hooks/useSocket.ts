@@ -10,7 +10,7 @@ const SOCKET_URL = import.meta.env['VITE_API_URL']
 let globalSocket: Socket | null = null;
 
 export function useSocket() {
-  const { token } = useAuthStore();
+  const { accessToken: token } = useAuthStore();
   const fetchUnreadCount = useChatStore((s) => s.fetchUnreadCount);
   const socketRef = useRef<Socket | null>(null);
 

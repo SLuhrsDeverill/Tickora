@@ -17,7 +17,7 @@ const CATEGORIES = ['HARDWARE', 'SOFTWARE', 'NETWORK', 'EMAIL', 'PRINTER', 'ACCE
 
 export default function TicketList({ myTickets: myTicketsProp }: { myTickets?: boolean } = {}) {
   const { user } = useAuthStore();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [meta, setMeta] = useState({ page: 1, total: 0, totalPages: 0, limit: 20 });
   const [loading, setLoading] = useState(true);
