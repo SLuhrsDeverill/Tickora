@@ -15,14 +15,35 @@ import ticketRoutes from './modules/tickets/ticket.routes';
 import userRoutes from './modules/users/user.routes';
 import assetRoutes from './modules/assets/asset.routes';
 import metricsRoutes from './modules/metrics/metrics.routes';
+import uploadRoutes from './modules/upload/upload.routes';
+import chatRoutes from './modules/chat/chat.routes';
+import botRoutes from './modules/bot/bot.routes';
+import knowledgeRoutes from './modules/knowledge/knowledge.routes';
+import settingsRoutes from './modules/settings/settings.routes';
 
 const app = express();
 
 // Security
 app.use(helmet());
+
+const allowedOrigins = (() => {
+  const configured = process.env['FRONTEND_URL'] || 'http://localhost:5174';
+  // In development, allow all localhost ports to avoid friction during setup
+  if (process.env['NODE_ENV'] === 'development') {
+    return (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => {
+      if (!origin || /^http:\/\/localhost(:\d+)?$/.test(origin)) {
+        cb(null, true);
+      } else {
+        cb(new Error(`CORS: origin ${origin} not allowed`));
+      }
+    };
+  }
+  return configured;
+})();
+
 app.use(
   cors({
-    origin: process.env['FRONTEND_URL'] || 'http://localhost:5173',
+    origin: allowedOrigins,
     credentials: true,
   })
 );
@@ -53,6 +74,11 @@ app.use('/api/tickets', ticketRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/assets', assetRoutes);
 app.use('/api/metrics', metricsRoutes);
+app.use('/api/uploads', uploadRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/bot', botRoutes);
+app.use('/api/knowledge', knowledgeRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

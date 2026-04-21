@@ -16,6 +16,9 @@ declare global {
   }
 }
 
+/** Alias for Request with guaranteed user – use after authMiddleware */
+export type AuthRequest = Request;
+
 export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
   const authHeader = req.headers.authorization;
 

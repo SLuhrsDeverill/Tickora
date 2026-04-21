@@ -79,6 +79,61 @@ export class TicketController {
       next(err);
     }
   }
+
+  async addTimeEntry(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const entry = await ticketService.addTimeEntry(req.params['id']!, req.body, req.user!.userId);
+      apiResponse.created(res, entry, 'Time entry added');
+    } catch (err) { next(err); }
+  }
+
+  async getTimeEntries(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const entries = await ticketService.getTimeEntries(req.params['id']!);
+      apiResponse.success(res, entries);
+    } catch (err) { next(err); }
+  }
+
+  async addWatcher(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await ticketService.addWatcher(req.params['id']!, req.user!.userId);
+      apiResponse.success(res, result, 'Watcher added');
+    } catch (err) { next(err); }
+  }
+
+  async removeWatcher(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      await ticketService.removeWatcher(req.params['id']!, req.params['userId']!);
+      apiResponse.success(res, null, 'Watcher removed');
+    } catch (err) { next(err); }
+  }
+
+  async submitSatisfaction(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const ticket = await ticketService.submitSatisfaction(
+        req.params['id']!,
+        req.user!.userId,
+        req.body,
+      );
+      apiResponse.success(res, ticket, 'Satisfaction submitted');
+    } catch (err) { next(err); }
+  }
+
+  async exportCsv(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const csv = await ticketService.exportCsv(req, req.user!.role);
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="tickets.csv"');
+      res.send(csv);
+    } catch (err) { next(err); }
+  }
+
+  async escalate(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const ticket = await ticketService.escalate(req.params['id']!, req.user!.userId);
+      apiResponse.success(res, ticket, 'Ticket escalated');
+    } catch (err) { next(err); }
+  }
 }
 
 export const ticketController = new TicketController();

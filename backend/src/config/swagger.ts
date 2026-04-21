@@ -4,9 +4,9 @@ const options: swaggerJsdoc.Options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'IT HelpDesk API',
+      title: 'Tickora API',
       version: '1.0.0',
-      description: 'API completa para el sistema de gestión de tickets IT HelpDesk',
+      description: 'API completa para el sistema de gestión de tickets Tickora',
     },
     servers: [
       {

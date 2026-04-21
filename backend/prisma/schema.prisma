@@ -43,6 +43,20 @@ enum TicketCategory {
   OTHER
 }
 
+enum TicketImpact {
+  SINGLE_USER
+  DEPARTMENT
+  COMPANY_WIDE
+}
+
+enum TicketSource {
+  WEB_PORTAL
+  EMAIL
+  PHONE
+  CHAT_BOT
+  WALK_IN
+}
+
 enum AssetType {
   LAPTOP
   DESKTOP
@@ -70,6 +84,21 @@ enum AssetStatus {
   RESERVED
 }
 
+enum ChatRoomType {
+  DIRECT
+  GROUP
+  TICKET
+  BROADCAST
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+  SYSTEM
+  BOT
+}
+
 // ========================
 // MODELOS PRINCIPALES
 // ========================
@@ -82,6 +111,7 @@ model User {
   lastName     String
   role         Role     @default(EMPLOYEE)
   department   String?
+  departmentId String?
   position     String?
   phone        String?
   avatar       String?
@@ -89,15 +119,38 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  // Relaciones
-  ticketsCreated    Ticket[]       @relation("CreatedBy")
-  ticketsAssigned   Ticket[]       @relation("AssignedTo")
+  // Relaciones existentes
+  ticketsCreated    Ticket[]          @relation("CreatedBy")
+  ticketsAssigned   Ticket[]          @relation("AssignedTo")
   comments          Comment[]
   assetsAssigned    AssetAssignment[]
   notifications     Notification[]
   activityLogs      ActivityLog[]
 
+  // Relaciones nuevas
+  dept              Department?       @relation("DepartmentUsers", fields: [departmentId], references: [id])
+  managedDepts      Department[]      @relation("DepartmentManager")
+  timeEntries       TimeEntry[]
+  watchedTickets    TicketWatcher[]
+  chatMemberships   ChatMember[]
+  chatMessages      ChatMessage[]
+  botConversations  BotConversation[]
+  uploads           Attachment[]      @relation("UploadedBy")
+  knowledgeArticles KnowledgeBase[]
+
   @@map("users")
+}
+
+model Department {
+  id        String  @id @default(cuid())
+  name      String  @unique
+  code      String  @unique
+  managerId String?
+  manager   User?   @relation("DepartmentManager", fields: [managerId], references: [id])
+  isActive  Boolean @default(true)
+  users     User[]  @relation("DepartmentUsers")
+
+  @@map("departments")
 }
 
 model Ticket {
@@ -121,21 +174,38 @@ model Ticket {
   closedAt     DateTime?
   firstResponseAt DateTime?
 
-  // Tiempos SLA
-  slaDeadline  DateTime?
+  // Tiempos
+  slaDeadline     DateTime?
+  estimatedHours  Float?
+  actualHours     Float?
+  dueDate         DateTime?
+
+  // Clasificación avanzada
+  tags            String[]
+  impact          TicketImpact   @default(SINGLE_USER)
+  source          TicketSource   @default(WEB_PORTAL)
 
   // Activo relacionado (opcional)
   assetId      String?
   asset        Asset?         @relation(fields: [assetId], references: [id])
 
+  // IA
+  aiHandled         Boolean   @default(false)
+  aiEscalatedAt     DateTime?
+  satisfactionScore Int?
+  satisfactionComment String?
+
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
   // Relaciones
-  comments     Comment[]
-  attachments  Attachment[]
-  history      TicketHistory[]
+  comments      Comment[]
+  attachments   Attachment[]
+  history       TicketHistory[]
   notifications Notification[]
+  watchers      TicketWatcher[]
+  timeEntries   TimeEntry[]
+  aiSuggestions AISuggestion[]
 
   @@map("tickets")
 }
@@ -157,32 +227,64 @@ model Comment {
 }
 
 model Attachment {
-  id           String   @id @default(cuid())
+  id           String  @id @default(cuid())
   filename     String
   originalName String
   mimeType     String
   size         Int
   url          String
+  thumbnailUrl String?
+  width        Int?
+  height       Int?
 
-  ticketId   String
-  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId     String
+  ticket       Ticket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
-  createdAt  DateTime @default(now())
+  uploadedById String?
+  uploadedBy   User?   @relation("UploadedBy", fields: [uploadedById], references: [id])
+
+  createdAt DateTime @default(now())
 
   @@map("attachments")
 }
 
 model TicketHistory {
-  id          String      @id @default(cuid())
+  id          String   @id @default(cuid())
   ticketId    String
-  ticket      Ticket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticket      Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   field       String
   oldValue    String?
   newValue    String?
   changedById String
-  createdAt   DateTime    @default(now())
+  createdAt   DateTime @default(now())
 
   @@map("ticket_history")
+}
+
+model TimeEntry {
+  id          String   @id @default(cuid())
+  ticketId    String
+  ticket      Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  hours       Float
+  description String
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@map("time_entries")
+}
+
+model TicketWatcher {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([ticketId, userId])
+  @@map("ticket_watchers")
 }
 
 // ========================
@@ -211,7 +313,6 @@ model Asset {
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
-  // Relaciones
   assignments  AssetAssignment[]
   tickets      Ticket[]
   maintenances AssetMaintenance[]
@@ -248,6 +349,105 @@ model AssetMaintenance {
 }
 
 // ========================
+// CHAT INTERNO
+// ========================
+
+model ChatRoom {
+  id        String       @id @default(cuid())
+  name      String?
+  type      ChatRoomType @default(DIRECT)
+  ticketId  String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  members  ChatMember[]
+  messages ChatMessage[]
+
+  @@map("chat_rooms")
+}
+
+model ChatMember {
+  id         String    @id @default(cuid())
+  roomId     String
+  room       ChatRoom  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User      @relation(fields: [userId], references: [id])
+  lastReadAt DateTime?
+  role       String    @default("member")
+  joinedAt   DateTime  @default(now())
+
+  @@unique([roomId, userId])
+  @@map("chat_members")
+}
+
+model ChatMessage {
+  id        String      @id @default(cuid())
+  roomId    String
+  room      ChatRoom    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  senderId  String
+  sender    User        @relation(fields: [senderId], references: [id])
+  content   String      @db.Text
+  type      MessageType @default(TEXT)
+  metadata  Json?
+  editedAt  DateTime?
+  deletedAt DateTime?
+  replyToId String?
+  replyTo   ChatMessage?  @relation("replies", fields: [replyToId], references: [id])
+  replies   ChatMessage[] @relation("replies")
+  createdAt DateTime    @default(now())
+
+  @@map("chat_messages")
+}
+
+// ========================
+// IA / BOT
+// ========================
+
+model AISuggestion {
+  id         String   @id @default(cuid())
+  ticketId   String
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  suggestion String   @db.Text
+  confidence Float
+  wasHelpful Boolean?
+  createdAt  DateTime @default(now())
+
+  @@map("ai_suggestions")
+}
+
+model KnowledgeBase {
+  id          String         @id @default(cuid())
+  title       String
+  content     String         @db.Text
+  category    TicketCategory
+  tags        String[]
+  isPublic    Boolean        @default(true)
+  views       Int            @default(0)
+  helpful     Int            @default(0)
+  notHelpful  Int            @default(0)
+  createdById String
+  createdBy   User           @relation(fields: [createdById], references: [id])
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@map("knowledge_base")
+}
+
+model BotConversation {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  ticketId  String?
+  messages  Json
+  resolved  Boolean  @default(false)
+  escalated Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("bot_conversations")
+}
+
+// ========================
 // SISTEMA
 // ========================
 
@@ -277,4 +477,13 @@ model ActivityLog {
   createdAt DateTime @default(now())
 
   @@map("activity_logs")
+}
+
+model SystemSettings {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String @db.Text
+  type  String @default("string")
+
+  @@map("system_settings")
 }

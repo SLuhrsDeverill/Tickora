@@ -267,6 +267,128 @@ export class TicketService {
     if (!ticket) throw new AppError('Ticket not found', 404);
     await prisma.ticket.delete({ where: { id } });
   }
+
+  async addTimeEntry(ticketId: string, body: { hours: number; description: string; date?: string }, userId: string) {
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) throw new AppError('Ticket not found', 404);
+
+    const entry = await prisma.timeEntry.create({
+      data: {
+        ticketId,
+        userId,
+        hours: body.hours,
+        description: body.description,
+        date: body.date ? new Date(body.date) : new Date(),
+      },
+      include: { user: { select: { id: true, firstName: true, lastName: true } } },
+    });
+
+    // Update actualHours sum on ticket
+    const total = await prisma.timeEntry.aggregate({
+      where: { ticketId },
+      _sum: { hours: true },
+    });
+    await prisma.ticket.update({
+      where: { id: ticketId },
+      data: { actualHours: total._sum.hours ?? 0 },
+    });
+
+    return entry;
+  }
+
+  async getTimeEntries(ticketId: string) {
+    return prisma.timeEntry.findMany({
+      where: { ticketId },
+      include: { user: { select: { id: true, firstName: true, lastName: true } } },
+      orderBy: { date: 'desc' },
+    });
+  }
+
+  async addWatcher(ticketId: string, userId: string) {
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) throw new AppError('Ticket not found', 404);
+
+    return prisma.ticketWatcher.upsert({
+      where: { ticketId_userId: { ticketId, userId } },
+      create: { ticketId, userId },
+      update: {},
+    });
+  }
+
+  async removeWatcher(ticketId: string, userId: string) {
+    await prisma.ticketWatcher.deleteMany({ where: { ticketId, userId } });
+  }
+
+  async submitSatisfaction(ticketId: string, userId: string, body: { score: number; comment?: string }) {
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) throw new AppError('Ticket not found', 404);
+    if (ticket.createdById !== userId) throw new AppError('Solo el creador puede calificar', 403);
+    if (ticket.status !== 'RESOLVED' && ticket.status !== 'CLOSED') {
+      throw new AppError('Solo se puede calificar tickets resueltos', 400);
+    }
+    if (body.score < 1 || body.score > 5) throw new AppError('El puntaje debe ser entre 1 y 5', 400);
+
+    return prisma.ticket.update({
+      where: { id: ticketId },
+      data: { satisfactionScore: body.score, satisfactionComment: body.comment },
+    });
+  }
+
+  async exportCsv(req: Request, _userRole: string): Promise<string> {
+    const { status, priority, category, assignedToId, createdById } = req.query as Record<string, string>;
+
+    const where: Prisma.TicketWhereInput = {
+      ...(status ? { status: status as TicketStatus } : {}),
+      ...(priority ? { priority: priority as TicketPriority } : {}),
+      ...(category ? { category: category as 'HARDWARE' } : {}),
+      ...(assignedToId ? { assignedToId } : {}),
+      ...(createdById ? { createdById } : {}),
+    };
+
+    const tickets = await prisma.ticket.findMany({
+      where,
+      include: {
+        createdBy: { select: { firstName: true, lastName: true, email: true } },
+        assignedTo: { select: { firstName: true, lastName: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const header = 'Número,Título,Categoría,Estado,Prioridad,Creado por,Asignado a,Creado,Resuelto\n';
+    const rows = tickets.map((t) => [
+      t.ticketNumber,
+      `"${t.title.replace(/"/g, '""')}"`,
+      t.category,
+      t.status,
+      t.priority,
+      `${t.createdBy.firstName} ${t.createdBy.lastName}`,
+      t.assignedTo ? `${t.assignedTo.firstName} ${t.assignedTo.lastName}` : '',
+      t.createdAt.toISOString(),
+      t.resolvedAt ? t.resolvedAt.toISOString() : '',
+    ].join(',')).join('\n');
+
+    return header + rows;
+  }
+
+  async escalate(ticketId: string, userId: string) {
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) throw new AppError('Ticket not found', 404);
+
+    await prisma.ticketHistory.create({
+      data: {
+        ticketId,
+        field: 'priority',
+        oldValue: ticket.priority,
+        newValue: 'CRITICAL',
+        changedById: userId,
+      },
+    });
+
+    return prisma.ticket.update({
+      where: { id: ticketId },
+      data: { priority: 'CRITICAL' },
+    });
+  }
 }
 
 export const ticketService = new TicketService();

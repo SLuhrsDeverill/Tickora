@@ -21,6 +21,10 @@ export interface TicketFilters {
 }
 
 export const ticketsApi = {
+  // Alias used by Kanban and other components
+  getAll: (filters?: TicketFilters) =>
+    apiClient.get<{ data: Ticket[]; meta: PaginatedResponse<Ticket>['meta'] }>('/tickets', { params: filters }),
+
   list: (filters?: TicketFilters) =>
     apiClient.get<{ data: Ticket[]; meta: PaginatedResponse<Ticket>['meta'] }>('/tickets', { params: filters }),
 

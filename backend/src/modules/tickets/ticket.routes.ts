@@ -34,4 +34,13 @@ router.patch(
 );
 router.post('/:id/comments', validate(addCommentSchema), ticketController.addComment.bind(ticketController));
 
+// V2 endpoints
+router.post('/:id/time-entries', ticketController.addTimeEntry.bind(ticketController));
+router.get('/:id/time-entries', ticketController.getTimeEntries.bind(ticketController));
+router.post('/:id/watchers', ticketController.addWatcher.bind(ticketController));
+router.delete('/:id/watchers/:userId', ticketController.removeWatcher.bind(ticketController));
+router.post('/:id/satisfaction', ticketController.submitSatisfaction.bind(ticketController));
+router.get('/export/csv', requireRole('ADMIN', 'IT_AGENT'), ticketController.exportCsv.bind(ticketController));
+router.post('/:id/escalate', requireRole('ADMIN', 'IT_AGENT'), ticketController.escalate.bind(ticketController));
+
 export default router;

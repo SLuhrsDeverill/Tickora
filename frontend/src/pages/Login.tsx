@@ -41,11 +41,11 @@ export default function Login() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4">
-            <Settings size={32} className="text-white" />
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4 text-4xl leading-none select-none">
+            🎫
           </div>
-          <h1 className="text-2xl font-bold text-white">IT HelpDesk</h1>
-          <p className="text-slate-400 mt-1 text-sm">Sistema de gestión de tickets</p>
+          <h1 className="text-2xl font-bold text-white">Tickora</h1>
+          <p className="text-slate-400 mt-1 text-sm">Tu plataforma de soporte IT</p>
         </div>
 
         {/* Card */}
@@ -104,12 +104,7 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="mt-6 p-3 bg-gray-50 rounded-lg text-xs text-gray-600 space-y-1">
-            <p className="font-medium text-gray-700">Usuarios de prueba:</p>
-            <p>Admin: admin@empresa.com / Admin1234!</p>
-            <p>Agente IT: it.agent@empresa.com / Agent1234!</p>
-            <p>Empleado: empleado@empresa.com / Empleado1234!</p>
-          </div>
+          <p className="mt-6 text-center text-xs text-gray-400">© 2026 Tickora. Todos los derechos reservados.</p>
         </div>
       </div>
     </div>

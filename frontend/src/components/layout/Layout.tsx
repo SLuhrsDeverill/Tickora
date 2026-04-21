@@ -1,6 +1,9 @@
+import { useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
+import { useSocket } from '../../hooks/useSocket';
+import { useChatStore } from '../../store/chat.store';
 
 const pageTitles: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -16,6 +19,11 @@ const pageTitles: Record<string, string> = {
 export default function Layout() {
   const location = useLocation();
   const title = pageTitles[location.pathname] || 'IT HelpDesk';
+  const { fetchUnreadCount } = useChatStore();
+
+  // Initialize socket connection and fetch unread count on mount
+  useSocket();
+  useEffect(() => { fetchUnreadCount(); }, [fetchUnreadCount]);
 
   return (
     <div className="flex h-screen bg-slate-50">

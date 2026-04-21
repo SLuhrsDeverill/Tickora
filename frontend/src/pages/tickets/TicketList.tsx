@@ -15,7 +15,7 @@ const STATUSES = ['OPEN', 'IN_PROGRESS', 'ON_HOLD', 'RESOLVED', 'CLOSED'];
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 const CATEGORIES = ['HARDWARE', 'SOFTWARE', 'NETWORK', 'EMAIL', 'PRINTER', 'ACCESS_PERMISSIONS', 'PHONE', 'OTHER'];
 
-export default function TicketList() {
+export default function TicketList({ myTickets: myTicketsProp }: { myTickets?: boolean } = {}) {
   const { user } = useAuthStore();
   const [searchParams, setSearchParams] = useSearchParams();
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -26,7 +26,7 @@ export default function TicketList() {
     status: searchParams.get('status') || '',
     priority: '',
     category: '',
-    myTickets: searchParams.get('myTickets') === 'true',
+    myTickets: myTicketsProp || searchParams.get('myTickets') === 'true',
   });
 
   const loadTickets = useCallback(async (page = 1) => {
