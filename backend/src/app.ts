@@ -26,24 +26,22 @@ const app = express();
 // Security
 app.use(helmet());
 
-const allowedOrigins = (() => {
-  const configured = process.env['FRONTEND_URL'] || 'http://localhost:5174';
-  // In development, allow all localhost ports to avoid friction during setup
-  if (process.env['NODE_ENV'] === 'development') {
-    return (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => {
-      if (!origin || /^http:\/\/localhost(:\d+)?$/.test(origin)) {
-        cb(null, true);
-      } else {
-        cb(new Error(`CORS: origin ${origin} not allowed`));
-      }
-    };
-  }
-  return configured;
-})();
+const ALLOWED_ORIGINS = [
+  'https://tickora-frontend.onrender.com',
+  'https://tickora.onrender.com',
+  'http://localhost:5173',
+  'http://localhost:5174',
+  ...(process.env['FRONTEND_URL'] ? [process.env['FRONTEND_URL']] : []),
+];
 
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin: (origin, cb) => {
+      // Allow server-to-server / curl requests (no origin header)
+      if (!origin) return cb(null, true);
+      if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+      cb(new Error(`CORS: origin ${origin} not allowed`));
+    },
     credentials: true,
   })
 );
