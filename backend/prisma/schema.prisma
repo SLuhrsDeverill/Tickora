@@ -115,6 +115,12 @@ model User {
   position     String?
   phone        String?
   avatar       String?
+  jobTitle     String?
+  legacyNumber String?
+  hireDate     DateTime?
+  anyDeskId    String?
+  teamViewerId String?
+  networkName  String?
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

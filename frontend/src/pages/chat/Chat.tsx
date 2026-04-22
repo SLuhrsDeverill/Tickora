@@ -59,6 +59,7 @@ function MessageBubble({ msg, isMe }: { msg: ChatMessage; isMe: boolean }) {
 
 export default function Chat() {
   const { user } = useAuthStore();
+  const isIT = user?.role === 'ADMIN' || user?.role === 'IT_AGENT';
   const { fetchUnreadCount } = useChatStore();
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [activeRoom, setActiveRoom] = useState<ChatRoom | null>(null);
@@ -198,28 +199,34 @@ export default function Chat() {
               <div ref={messagesEndRef} />
             </div>
 
-            <div className="p-3 bg-white border-t border-slate-200 flex gap-2">
-              <textarea
-                className="flex-1 resize-none rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
-                placeholder="Escribí un mensaje..."
-                rows={1}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
-              />
-              <button
-                onClick={handleSend}
-                disabled={!input.trim()}
-                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-xl px-3 flex items-center transition-colors"
-              >
-                <Send size={18} />
-              </button>
-            </div>
+            {activeRoom.type === 'BROADCAST' && !isIT ? (
+              <div className="p-3 bg-slate-50 border-t border-slate-200 text-center text-xs text-slate-400">
+                📢 Solo el equipo IT puede escribir en este canal
+              </div>
+            ) : (
+              <div className="p-3 bg-white border-t border-slate-200 flex gap-2">
+                <textarea
+                  className="flex-1 resize-none rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+                  placeholder="Escribí un mensaje..."
+                  rows={1}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                />
+                <button
+                  onClick={handleSend}
+                  disabled={!input.trim()}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-xl px-3 flex items-center transition-colors"
+                >
+                  <Send size={18} />
+                </button>
+              </div>
+            )}
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center text-slate-400">

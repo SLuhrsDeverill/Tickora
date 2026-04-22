@@ -8,17 +8,20 @@ import { useChatStore } from '../../store/chat.store';
 const pageTitles: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/tickets': 'Tickets',
+  '/tickets/my': 'Mis Tickets',
   '/tickets/new': 'Nuevo Ticket',
   '/assets': 'Activos IT',
   '/assets/new': 'Nuevo Activo',
   '/users': 'Usuarios',
   '/metrics': 'Métricas',
   '/profile': 'Mi Perfil',
+  '/chat': 'Chat',
+  '/knowledge': 'Base de Conocimiento',
 };
 
 export default function Layout() {
   const location = useLocation();
-  const title = pageTitles[location.pathname] || 'IT HelpDesk';
+  const title = pageTitles[location.pathname] || 'Tickora';
   const { fetchUnreadCount } = useChatStore();
 
   // Initialize socket connection and fetch unread count on mount

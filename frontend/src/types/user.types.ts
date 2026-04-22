@@ -13,6 +13,12 @@ export interface User {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  jobTitle?: string;
+  legacyNumber?: string;
+  hireDate?: string;
+  anyDeskId?: string;
+  teamViewerId?: string;
+  networkName?: string;
 }
 
 export interface AuthUser extends User {

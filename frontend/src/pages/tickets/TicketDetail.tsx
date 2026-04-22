@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, User, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Send, User, CheckCircle, MessageSquare } from 'lucide-react';
 import { ticketsApi } from '../../api/tickets.api';
 import { usersApi } from '../../api/users.api';
+import { chatApi } from '../../api/chat.api';
+import type { ChatRoom, ChatMessage } from '../../api/chat.api';
 import TicketStatusBadge from '../../components/tickets/TicketStatusBadge';
 import TicketPriorityBadge from '../../components/tickets/TicketPriorityBadge';
 import { formatDate, formatRelative } from '../../utils/formatDate';
@@ -10,6 +12,7 @@ import { TICKET_CATEGORY_LABELS, TICKET_STATUS_LABELS } from '../../utils/consta
 import type { Ticket } from '../../types/ticket.types';
 import type { User as UserType } from '../../types/user.types';
 import { useAuthStore } from '../../store/auth.store';
+import { useSocket } from '../../hooks/useSocket';
 import clsx from 'clsx';
 
 export default function TicketDetail() {
@@ -24,6 +27,13 @@ export default function TicketDetail() {
   const [sending, setSending] = useState(false);
   const [statusAction, setStatusAction] = useState('');
   const [resolution, setResolution] = useState('');
+
+  // Chat del ticket
+  const [ticketRoom, setTicketRoom] = useState<ChatRoom | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const { joinRoom, leaveRoom, markRead, on } = useSocket();
 
   const isIT = user?.role === 'ADMIN' || user?.role === 'IT_AGENT';
 
@@ -44,6 +54,39 @@ export default function TicketDetail() {
     };
     load();
   }, [id, isIT, navigate]);
+
+  // Find and load ticket chat room
+  useEffect(() => {
+    if (!id) return;
+    chatApi.getMyRooms().then((res) => {
+      const room = res.data.data.find((r) => r.type === 'TICKET' && r.ticketId === id);
+      if (room) {
+        setTicketRoom(room);
+        chatApi.getMessages(room.id).then((msgRes) => setChatMessages(msgRes.data.data));
+      }
+    }).catch(() => {});
+  }, [id]);
+
+  // Socket for real-time chat
+  const handleNewMessage = useCallback((raw: unknown) => {
+    const msg = raw as ChatMessage;
+    if (ticketRoom && msg.roomId === ticketRoom.id) {
+      setChatMessages((prev) => [...prev, msg]);
+      markRead(ticketRoom.id);
+    }
+  }, [ticketRoom, markRead]);
+
+  useEffect(() => {
+    if (!ticketRoom) return;
+    joinRoom(ticketRoom.id);
+    markRead(ticketRoom.id);
+    const off = on('new_message', handleNewMessage);
+    return () => { leaveRoom(ticketRoom.id); off(); };
+  }, [ticketRoom, joinRoom, leaveRoom, markRead, on, handleNewMessage]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
 
   const handleAddComment = async () => {
     if (!comment.trim()) return;
@@ -80,6 +123,17 @@ export default function TicketDetail() {
     }
   };
 
+  const handleSendChat = async () => {
+    if (!chatInput.trim() || !ticketRoom) return;
+    const content = chatInput.trim();
+    setChatInput('');
+    try {
+      await chatApi.sendMessage(ticketRoom.id, content);
+    } catch {
+      setChatInput(content);
+    }
+  };
+
   if (loading) {
     return <div className="animate-pulse space-y-4">
       <div className="h-8 bg-gray-200 rounded w-48" />
@@ -91,10 +145,7 @@ export default function TicketDetail() {
 
   return (
     <div className="space-y-6">
-      <button
-        onClick={() => navigate('/tickets')}
-        className="flex items-center gap-2 text-gray-500 hover:text-gray-700 text-sm"
-      >
+      <button onClick={() => navigate('/tickets')} className="flex items-center gap-2 text-gray-500 hover:text-gray-700 text-sm">
         <ArrowLeft size={16} /> Volver a tickets
       </button>
 
@@ -169,32 +220,19 @@ export default function TicketDetail() {
 
             <div className="space-y-4 mb-6">
               {(ticket.comments || []).map((c) => (
-                <div
-                  key={c.id}
-                  className={clsx(
-                    'flex gap-3',
-                    c.isInternal && 'opacity-75'
-                  )}
-                >
+                <div key={c.id} className={clsx('flex gap-3', c.isInternal && 'opacity-75')}>
                   <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-semibold shrink-0">
                     {c.author.firstName.charAt(0)}{c.author.lastName.charAt(0)}
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-medium text-gray-900">
-                        {c.author.firstName} {c.author.lastName}
-                      </span>
+                      <span className="text-sm font-medium text-gray-900">{c.author.firstName} {c.author.lastName}</span>
                       {c.isInternal && (
-                        <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">
-                          Nota interna
-                        </span>
+                        <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">Nota interna</span>
                       )}
                       <span className="text-xs text-gray-400">{formatRelative(c.createdAt)}</span>
                     </div>
-                    <div className={clsx(
-                      'rounded-lg p-3 text-sm text-gray-700',
-                      c.isInternal ? 'bg-yellow-50 border border-yellow-200' : 'bg-gray-50'
-                    )}>
+                    <div className={clsx('rounded-lg p-3 text-sm text-gray-700', c.isInternal ? 'bg-yellow-50 border border-yellow-200' : 'bg-gray-50')}>
                       <p className="whitespace-pre-wrap">{c.content}</p>
                     </div>
                   </div>
@@ -202,7 +240,6 @@ export default function TicketDetail() {
               ))}
             </div>
 
-            {/* Comment form */}
             {ticket.status !== 'CLOSED' && (
               <div className="border-t border-gray-100 pt-4">
                 <textarea
@@ -215,12 +252,7 @@ export default function TicketDetail() {
                 <div className="flex items-center justify-between">
                   {isIT && (
                     <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={isInternal}
-                        onChange={(e) => setIsInternal(e.target.checked)}
-                        className="rounded border-gray-300"
-                      />
+                      <input type="checkbox" checked={isInternal} onChange={(e) => setIsInternal(e.target.checked)} className="rounded border-gray-300" />
                       Nota interna (solo IT)
                     </label>
                   )}
@@ -235,6 +267,58 @@ export default function TicketDetail() {
               </div>
             )}
           </div>
+
+          {/* Ticket Chat */}
+          {ticketRoom && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-100">
+                <MessageSquare size={16} className="text-blue-600" />
+                <h3 className="text-sm font-semibold text-gray-900">Chat del ticket</h3>
+                <span className="text-xs text-gray-400 ml-1">{ticketRoom.members.length} participantes</span>
+              </div>
+              <div className="h-64 overflow-y-auto p-4 space-y-2 bg-slate-50">
+                {chatMessages.length === 0 ? (
+                  <p className="text-center text-gray-400 text-sm py-8">No hay mensajes en el chat de este ticket</p>
+                ) : (
+                  chatMessages.map((msg) => {
+                    const isMe = msg.senderId === user?.id;
+                    return (
+                      <div key={msg.id} className={clsx('flex gap-2', isMe ? 'flex-row-reverse' : 'flex-row')}>
+                        <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                          {msg.sender.firstName.charAt(0)}{msg.sender.lastName.charAt(0)}
+                        </div>
+                        <div className={clsx('max-w-[70%] flex flex-col', isMe ? 'items-end' : 'items-start')}>
+                          {!isMe && <span className="text-xs text-slate-500 mb-0.5">{msg.sender.firstName} {msg.sender.lastName}</span>}
+                          <div className={clsx('px-3 py-2 rounded-xl text-sm', isMe ? 'bg-blue-600 text-white rounded-tr-sm' : 'bg-white text-slate-800 rounded-tl-sm shadow-sm')}>
+                            {msg.content}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                <div ref={chatEndRef} />
+              </div>
+              {ticket.status !== 'CLOSED' && (
+                <div className="p-3 border-t border-gray-100 flex gap-2">
+                  <input
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSendChat(); } }}
+                    placeholder="Escribí un mensaje..."
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+                  />
+                  <button
+                    onClick={handleSendChat}
+                    disabled={!chatInput.trim()}
+                    className="bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-lg px-3 flex items-center transition-colors"
+                  >
+                    <Send size={16} />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Sidebar */}
@@ -276,7 +360,6 @@ export default function TicketDetail() {
             <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
               <h3 className="text-sm font-semibold text-gray-900 mb-4">Acciones IT</h3>
               <div className="space-y-3">
-                {/* Assign */}
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">Asignar agente</label>
                   <select
@@ -291,7 +374,6 @@ export default function TicketDetail() {
                   </select>
                 </div>
 
-                {/* Status */}
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">Cambiar estado</label>
                   <select

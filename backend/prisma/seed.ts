@@ -148,6 +148,22 @@ async function main() {
     }
   }
 
+  // ─── Anuncios IT broadcast room ─────────────────────────────────────────
+  if (adminUser) {
+    const existingBroadcast = await prisma.chatRoom.findFirst({
+      where: { type: 'BROADCAST', name: 'Anuncios IT' },
+    });
+    if (!existingBroadcast) {
+      await prisma.chatRoom.create({
+        data: {
+          name: 'Anuncios IT',
+          type: 'BROADCAST',
+          members: { create: { userId: adminUser.id, role: 'ADMIN' } },
+        },
+      });
+    }
+  }
+
   const separator = '═'.repeat(44);
   console.log(`\n${separator}`);
   console.log('✅ Sistema listo para producción');

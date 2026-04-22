@@ -38,7 +38,7 @@ export default function Sidebar() {
     { to: '/dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
 
     // Tickets section
-    { to: '/tickets', icon: <Ticket size={20} />, label: 'Lista de tickets' },
+    { to: '/tickets', icon: <Ticket size={20} />, label: 'Lista de tickets', roles: ['ADMIN', 'IT_AGENT'] },
     { to: '/tickets/kanban', icon: <KanbanSquare size={20} />, label: 'Vista Kanban', roles: ['ADMIN', 'IT_AGENT'] },
     { to: '/tickets/my', icon: <Ticket size={20} />, label: 'Mis tickets' },
 
